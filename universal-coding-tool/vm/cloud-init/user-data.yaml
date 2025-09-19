@@ -1,0 +1,46 @@
+#cloud-config
+users:
+  - default
+  - name: sandbox
+    gecos: Sandbox Runner
+    sudo: ALL=(ALL) NOPASSWD:ALL
+    groups: [docker]
+    shell: /bin/bash
+    lock_passwd: true
+    ssh_authorized_keys:
+      - ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDexampleplaceholder ReplaceWithRealKey
+package_update: true
+packages:
+  - docker.io
+  - jq
+  - python3
+  - ca-certificates
+  - tar
+write_files:
+  - path: /usr/local/bin/uct-run-job.sh
+    permissions: '0755'
+    owner: root:root
+    content: |
+      #!/usr/bin/env bash
+      set -euo pipefail
+      JOB_META="/var/lib/uct/job-config.json"
+      JOB_ARCHIVE="/var/lib/uct/job.tgz"
+      if [[ ! -f "${JOB_META}" ]]; then
+        echo "[cloud-init] No job config present" >&2
+        exit 0
+      fi
+      runuser -l sandbox -c 'mkdir -p ~/job'
+      if [[ -f "${JOB_ARCHIVE}" ]]; then
+        runuser -l sandbox -c 'tar -xzf /var/lib/uct/job.tgz -C ~/job'
+      fi
+      IMAGE=$(jq -r '.image' "${JOB_META}")
+      CMD=$(jq -r '.cmd' "${JOB_META}")
+      cat <<EOF | runuser -l sandbox -c 'DOCKER_HOST=unix:///run/user/1000/docker.sock bash'
+      docker run --rm -v /home/sandbox/job:/work ${IMAGE} "${CMD}"
+      EOF
+      runuser -l sandbox -c 'tar -czf /var/lib/uct/artifacts.tgz -C ~/job/out . || true'
+      echo "job-complete" > /var/lib/uct/status
+runcmd:
+  - systemctl enable docker
+  - systemctl start docker
+  - /usr/local/bin/uct-run-job.sh || true
