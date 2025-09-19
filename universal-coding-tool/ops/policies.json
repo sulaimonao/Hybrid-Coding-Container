@@ -1,0 +1,40 @@
+{
+  "safe-default": {
+    "runner": "container",
+    "docker": {
+      "cpus": 1,
+      "memory": "1g",
+      "pids_limit": 256,
+      "network": "none",
+      "read_only_root": true,
+      "seccomp": "default",
+      "cap_drop": ["ALL"],
+      "no_new_privileges": true,
+      "tmpfs": {"/tmp": "rw,nosuid,noexec,size=64m"}
+    }
+  },
+  "research": {
+    "runner": "container",
+    "docker": {
+      "cpus": 2,
+      "memory": "4g",
+      "network": "allowlist",
+      "tmpfs": {"/tmp": "rw,nosuid,noexec,size=128m"}
+    }
+  },
+  "experimental": {
+    "runner": "container",
+    "docker": {
+      "cpus": 2,
+      "memory": "4g",
+      "network": "bridge"
+    }
+  },
+  "dedicated-vm": {
+    "runner": "vm",
+    "vm": {
+      "cpus": 2,
+      "memory": "4g"
+    }
+  }
+}
